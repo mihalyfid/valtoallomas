@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#245946">
+  <meta name="description" content="Irányítsd a vonatokat, állítsd a váltókat és juttass minden szerelvényt a megfelelő peronra.">
+  <title>Váltóállomás – Vasúti forgalomirányító</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./js/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">⇄</span><span>Váltóállomás</span></div>
+    <nav aria-label="Segítség és eredmények">
+      <button class="text-button" type="button" data-action="rules">Játékszabályok</button>
+      <button class="text-button" type="button" data-action="rankings">Dicsőséglista</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="menu-view" class="menu-view" aria-labelledby="menu-title">
+      <div class="menu-heading"><h1 id="menu-title">A következő menet rád vár.</h1>
+        <p>Állítsd a váltókat, kezeld a jelzőket, és vezesd a vonatokat a saját színű peronjukra.</p></div>
+      <div class="menu-layout">
+        <form id="start-form" class="start-form" novalidate>
+          <div class="name-field">
+            <label for="player-name">Játékos neve</label>
+            <input id="player-name" name="playerName" type="text" maxlength="40" required autocomplete="nickname" aria-describedby="name-error" placeholder="Hogyan szólíthatunk?">
+            <p id="name-error" class="field-error" aria-live="polite"></p>
+          </div>
+          <fieldset class="level-picker"><legend>Válassz pályát</legend>
+            <label class="level-option"><input type="radio" name="level" value="easy" checked>
+              <span class="level-number">01</span><span><strong>Kitérő vágány</strong><span>Könnyű · 4 vonat · 2 váltó</span></span>
+            </label>
+            <label class="level-option"><input type="radio" name="level" value="medium">
+              <span class="level-number">02</span><span><strong>Rendező-pályaudvar</strong><span>Közepes · 5 vonat · 3 váltó</span></span>
+            </label>
+            <label class="level-option"><input type="radio" name="level" value="hard">
+              <span class="level-number">03</span><span><strong>Fejpályaudvar</strong><span>Nehéz · 6 vonat · 4 váltó</span></span>
+            </label>
+          </fieldset>
+          <button class="button primary start-button" type="submit">Szimuláció indítása <span aria-hidden="true">→</span></button>
+          <div class="saved-game"><button id="load-button" class="button secondary" type="button" data-action="load" disabled>Mentett menet betöltése</button><p id="save-summary">Nincs mentett játékállás.</p></div>
+        </form>
+        <div class="preview-area">
+          <div class="preview-heading"><h2 id="preview-title">Kitérő vágány</h2><span id="preview-difficulty">Könnyű</span></div>
+          <div class="board-shell"><canvas id="preview-canvas" width="1000" height="580" role="img" aria-label="A kiválasztott pálya vágányrajza">A játékhoz Canvas 2D-t támogató böngésző szükséges.</canvas></div>
+          <p id="preview-description" class="preview-description"></p>
+          <div class="quick-guide"><p><strong>Bal kattintás</strong><span>Váltó és fényjelző állítása</span></p><p><strong>Jobb kattintás</strong><span>Vonat vészfékezése / feloldása</span></p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="game-view" class="game-view" aria-labelledby="game-title" hidden>
+      <div class="game-heading"><div><h1 id="game-title">Kitérő vágány</h1><p><span id="game-difficulty"></span> · <span id="game-player"></span></p></div><span id="game-status" class="game-status">Fut a menet</span></div>
+      <dl class="hud">
+        <div><dt>Játékidő</dt><dd id="hud-time">00:00</dd></div>
+        <div><dt>Célba ért</dt><dd id="hud-delivered">0 / 4</dd></div>
+        <div><dt>Hibák</dt><dd id="hud-errors">0</dd></div>
+        <div title="A piros jelző és a kézi fék miatt várakozó vonatok összesített ideje."><dt>Várakozás összesen</dt><dd id="hud-wait">00:00</dd></div>
+        <div><dt>Következő érkezés</dt><dd id="hud-next">00:02</dd></div>
+      </dl>
+      <div class="game-toolbar" aria-label="Menet vezérlése">
+        <button id="pause-button" class="button primary" type="button" data-action="pause">Szünet</button>
+        <button class="button secondary" type="button" data-action="save">Menet mentése</button>
+        <button class="button secondary" type="button" data-action="reset">Újrakezdés</button>
+        <button class="text-button" type="button" data-action="menu">Főmenü</button>
+        <p id="board-hint" aria-live="polite">A jelzők kezdetben tilosat mutatnak.</p>
+      </div>
+      <div class="game-layout">
+        <div class="board-area"><div class="board-shell"><canvas id="game-canvas" width="1000" height="580" tabindex="0" aria-label="Interaktív vágányrajz. Bal kattintás: váltó és jelző. Jobb kattintás: kézi fék.">A játékhoz Canvas 2D-t támogató böngésző szükséges.</canvas></div>
+          <div class="board-legend"><span>Világos összeköttetés: aktív váltóút</span><span>V: váltó · J: jelző</span></div>
+          <div class="events"><h2>Forgalmi események</h2><ol id="event-list" aria-label="Legutóbbi események"></ol></div>
+        </div>
+        <aside class="schedule-panel" aria-labelledby="schedule-title"><h2 id="schedule-title">Menetrend</h2><p class="schedule-intro">Érkezés · célperon · állapot</p><ol id="schedule-list"></ol><p class="schedule-note">A színek a célperont jelölik. A jelzőtől független kézi féket jobb kattintással oldhatod.</p></aside>
+      </div>
+    </section>
+    <p id="notification" class="notification" role="status" aria-live="polite" hidden></p>
+    <noscript>A játék futtatásához engedélyezd a JavaScriptet a böngészőben.</noscript>
+  </main>
+
+  <dialog id="rules-dialog" aria-labelledby="rules-title">
+    <div class="dialog-heading"><h2 id="rules-title">Játékszabályok és irányítás</h2><button type="button" class="text-button" data-action="close-dialog" aria-label="Szabályzat bezárása">Bezárás ×</button></div>
+    <div class="rules-content">
+      <p>Minden vonatot a saját színével megegyező peronra kell vezetned. A szerelvények a rögzített menetrend szerint, különböző sebességgel érkeznek. Az összes vonat hibátlan célba juttatásával nyersz.</p>
+      <h3>Váltók és fényjelzők</h3>
+      <p><strong>Bal kattintás a V jelű körre:</strong> a következő váltóutat választja. A világos vonal és a nyíl jelzi a kapcsolódó ágakat. Csak a kiemelt bejövő ágról lehet a kiválasztott kimenő sínre továbbhaladni; különben a vonat kisiklik.</p>
+      <p><strong>Bal kattintás a J jelű jelzőre:</strong> vörös és zöld között kapcsol. Vörös előtt a vonat automatikusan megáll; zöldnél továbbhalad, ha nincs behúzva a kézi fékje. Minden jelző kezdetben vörös.</p>
+      <h3>Kézi fék és biztonság</h3>
+      <p><strong>Jobb kattintás egy vonatra:</strong> azonnali megállítás, „FÉK” felirattal. Ismételt jobb kattintás feloldja a féket. A kézi fék feloldása nem írja felül a vörös jelzőt.</p>
+      <p>A pulzáló, szaggatott kör veszélyes közelséget jelez. A keresztező síneken haladó vonatok is ütközhetnek. Ütközéskor a menet azonnal véget ér. A jelzők nem kapcsolnak automatikusan: a biztonságos térközt neked kell fenntartanod.</p>
+      <h3>Hibák és eredmények</h3>
+      <p>A téves peron és a kisiklás hibának számít; a többi vonat útja folytatódik. A menetrend végén csak a hibátlan menet győzelem, és csak ez kerül a dicsőséglistára. Az eredményeknél előbb a hibapont, majd a rövidebb menetidő számít.</p>
+      <p>A „Várakozás összesen” a piros jelző vagy kézi fék miatt álló vonatok összesített várakozási ideje. Két vonat egyidejű 10 másodperces várakozása itt 20 másodperc.</p>
+      <h3>Szünet és mentés</h3>
+      <p>Szünet alatt az idő és a vonatok megállnak; a váltók és jelzők továbbra is állíthatók. A szabályzat és a ranglista megnyitása, illetve a böngészőlap háttérbe kerülése szintén szüneteltet. A háttérbe kerülés után a folytatást neked kell elindítanod.</p>
+      <p>A „Menet mentése” egy játékállást tárol ebben a böngészőben, felülírva a korábbit. A főmenüből pontosan innen folytathatod. A ranglisták is ehhez a böngészőhöz és webcímhez kötődnek; másik eszközön nem jelennek meg automatikusan.</p>
+      <h3>Az első pálya</h3>
+      <p>Piros vonathoz V1 a fővágányra, V2 a piros peronra álljon. Kék vonathoz V1 a kitérőre, V2 a kék peronra álljon. A V2 összevezető váltó: a fővágány csak a piros, a kitérő csak a kék állásához csatlakozik.</p>
+    </div>
+  </dialog>
+
+  <dialog id="rankings-dialog" aria-labelledby="rankings-title">
+    <div class="dialog-heading"><h2 id="rankings-title">Diszpécserek dicsőségkönyve</h2><button type="button" class="text-button" data-action="close-dialog" aria-label="Dicsőséglista bezárása">Bezárás ×</button></div>
+    <label for="rank-level">Pálya</label><select id="rank-level"><option value="easy">Kitérő vágány – Könnyű</option><option value="medium">Rendező-pályaudvar – Közepes</option><option value="hard">Fejpályaudvar – Nehéz</option></select>
+    <p>Az adott pálya legjobb 20 hibátlan menete ebben a böngészőben.</p>
+    <div class="table-scroll"><table><thead><tr><th scope="col">Hely</th><th scope="col">Játékos</th><th scope="col">Idő</th><th scope="col">Hiba</th><th scope="col">Dátum</th></tr></thead><tbody id="rankings-body"></tbody></table></div>
+    <p id="rankings-empty">Még nincs sikeres menet ezen a pályán. Az első hely rád vár.</p>
+  </dialog>
+
+  <dialog id="result-dialog" aria-labelledby="result-title">
+    <h2 id="result-title">Menet vége</h2><p id="result-description"></p>
+    <dl class="result-stats"><div><dt>Menetidő</dt><dd id="result-time"></dd></div><div><dt>Célba ért</dt><dd id="result-delivered"></dd></div><div><dt>Hibák</dt><dd id="result-errors"></dd></div></dl>
+    <p id="result-note"></p><div class="dialog-actions"><button class="button primary" type="button" data-action="reset">Új menet</button><button class="button secondary" type="button" data-action="result-menu">Főmenü</button><button class="text-button" type="button" data-action="close-dialog">Pálya megtekintése</button></div>
+  </dialog>
+
+  <dialog id="exit-dialog" aria-labelledby="exit-title"><h2 id="exit-title">Visszatérsz a főmenübe?</h2><p>A legutóbbi mentés óta történt változások mentéssel őrizhetők meg.</p><div class="dialog-actions"><button class="button primary" type="button" data-action="save-exit">Mentés és kilépés</button><button class="button secondary" type="button" data-action="exit">Kilépés mentés nélkül</button><button class="text-button" type="button" data-action="close-dialog">Maradok</button></div></dialog>
+</body>
+</html>
