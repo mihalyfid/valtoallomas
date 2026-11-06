@@ -5,7 +5,7 @@
 * **Neptun kód:** ZGPZOO
 * **Szak / Képzés:** Programtervező informatikus BSc (ELTE IK)
 * **Bemutató videó linkje (OneDrive):** [Videó megtekintése](https://...)
-* **A futtatható program linkje (Vercel, Netlify, Firebase, stb.):**
+* **A futtatható program linkje (Vercel, Netlify, Firebase, stb.): https://mihalyfid.github.io/valtoallomas/ **
 ---
 
 ## Hallgatói Nyilatkozat és AI Használat
